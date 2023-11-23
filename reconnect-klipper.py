@@ -16,58 +16,58 @@ class State(Enum):
 
 
 class PrinterControl:
-    __retryDelay = 1  # seconds
-    __dontTrustReadyStateTimeout = 30  # seconds
-    __baseUrl = None
-    __state = State.PRINTER_UNKNOWN
+    _retryDelay = 1  # seconds
+    _dontTrustReadyStateTimeout = 30  # seconds
+    _baseUrl = None
+    _state = State.PRINTER_UNKNOWN
 
     def __init__(self, baseUrl: str) -> None:
-        self.__baseUrl = baseUrl
+        self._baseUrl = baseUrl
 
     def getRequest(self, urlSuffix: str) -> any:
-        url = urllib.parse.urljoin(self.__baseUrl, urlSuffix)
+        url = urllib.parse.urljoin(self._baseUrl, urlSuffix)
         return requests.get(url=url).json()
 
     def postRequest(self, urlSuffix: str) -> any:
-        url = urllib.parse.urljoin(self.__baseUrl, urlSuffix)
+        url = urllib.parse.urljoin(self._baseUrl, urlSuffix)
         return requests.post(url=url).json()
 
     def refreshState(self) -> None:
         response = self.getRequest("printer/info")
         if "result" in response and "state" in response["result"]:
-            self.__state = response["result"]["state"]
+            self._state = response["result"]["state"]
         else:
             logging.debug(f"Unknown response: {response}")
-            self.__state = "Unknown"
+            self._state = "Unknown"
 
     def waitForFinalState(self) -> None:
         while True:
             self.refreshState()
-            logging.info(f"wait for final state. Current state: {self.__state}")
-            if self.__state in (
+            logging.info(f"wait for final state. Current state: {self._state}")
+            if self._state in (
                 State.PRINTER_READY,
                 State.PRINTER_SHUTDOWN,
                 State.PRINTER_ERROR,
             ):
                 break
-            time.sleep(self.__retryDelay)
+            time.sleep(self._retryDelay)
 
     @property
     def isReady(self) -> bool:
-        return self.__state == State.PRINTER_READY
+        return self._state == State.PRINTER_READY
 
     def dontTrustReadyState(self) -> None:
-        timeout = time.time() + self.__dontTrustReadyStateTimeout  # 1 minutes from now
+        timeout = time.time() + self._dontTrustReadyStateTimeout  # 1 minutes from now
         while True:
             if time.time() >= timeout:
                 break
 
             self.refreshState()
-            if self.__state != "ready":
+            if self._state != "ready":
                 break
 
             logging.info("don't trust ready state.")
-            time.sleep(self.__retryDelay)
+            time.sleep(self._retryDelay)
 
     def restartFirmware(self) -> None:
         response = self.postRequest("printer/firmware_restart")
