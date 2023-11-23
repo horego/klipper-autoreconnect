@@ -1,5 +1,6 @@
-import requests
+import json
 import urllib.parse
+import urllib.request
 import time
 import logging
 import sys
@@ -24,13 +25,20 @@ class PrinterControl:
     def __init__(self, baseUrl: str) -> None:
         self._baseUrl = baseUrl
 
+    def _request(self, url, method) -> any:
+        req = urllib.request.Request(url, method=method)
+        with urllib.request.urlopen(req) as response:
+            data = response.read()
+            json_data = json.loads(data.decode("utf-8"))
+            return json_data
+
     def getRequest(self, urlSuffix: str) -> any:
         url = urllib.parse.urljoin(self._baseUrl, urlSuffix)
-        return requests.get(url=url).json()
+        return self._request(url, method="GET")
 
     def postRequest(self, urlSuffix: str) -> any:
         url = urllib.parse.urljoin(self._baseUrl, urlSuffix)
-        return requests.post(url=url).json()
+        return self._request(url, method="POST")
 
     def refreshState(self) -> None:
         response = self.getRequest("printer/info")
