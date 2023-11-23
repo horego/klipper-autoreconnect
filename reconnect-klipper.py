@@ -52,6 +52,7 @@ class PrinterControl:
                 break
             time.sleep(self.__retryDelay)
 
+    @property
     def isReady(self) -> bool:
         return self.__state == State.PRINTER_READY
 
@@ -82,19 +83,19 @@ def waitForPrinter(baseUrl: str) -> None:
 
     control.dontTrustReadyState()  # when plugging in the usb cable very fast and the state in moonraker is not up to date.
     control.waitForFinalState()
-    if control.isReady():
+    if control.isReady:
         logging.info("klipper is already started")
         return
 
     control.restart()
     control.waitForFinalState()
-    if control.isReady():
+    if control.isReady:
         logging.info("klipper is ready after RESTART")
         return
 
     control.restartFirmware()
     control.waitForFinalState()
-    if control.isReady():
+    if control.isReady:
         logging.info("klipper is ready after FIRMWARE_RESTART")
         return
 
