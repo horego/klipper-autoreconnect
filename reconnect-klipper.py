@@ -44,10 +44,10 @@ class PrinterControl:
     def refresh_rate(self) -> None:
         response = self.get_request("printer/info")
         if "result" in response and "state" in response["result"]:
-            self._state = response["result"]["state"]
+            self._state = State[response["result"]["state"].lower()]
         else:
             logging.debug(f"Unknown response: {response}")
-            self._state = "Unknown"
+            self._state = State.PRINTER_UNKNOWN
 
     def wait_for_final_state(self) -> None:
         while True:
@@ -72,7 +72,7 @@ class PrinterControl:
                 break
 
             self.refresh_rate()
-            if self._state != "ready":
+            if self._state != State.PRINTER_READY:
                 break
 
             logging.info("don't trust ready state.")
