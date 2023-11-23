@@ -18,13 +18,13 @@ class State(Enum):
 
 
 class PrinterControl:
-    _retryDelay = 1  # seconds
-    _dontTrustReadyStateTimeout = 30  # seconds
-    _baseUrl = None
+    _retry_delay = 1  # seconds
+    _dont_trust_ready_state_timeout = 30  # seconds
+    _base_url = None
     _state = State.PRINTER_UNKNOWN
 
     def __init__(self, baseUrl: str) -> None:
-        self._baseUrl = baseUrl
+        self._base_url = baseUrl
 
     def _request(self, url, method) -> any:
         req = urllib.request.Request(url, method=method)
@@ -33,25 +33,25 @@ class PrinterControl:
             json_data = json.loads(data.decode("utf-8"))
             return json_data
 
-    def getRequest(self, urlSuffix: str) -> any:
-        url = urllib.parse.urljoin(self._baseUrl, urlSuffix)
+    def get_request(self, urlSuffix: str) -> any:
+        url = urllib.parse.urljoin(self._base_url, urlSuffix)
         return self._request(url, method="GET")
 
-    def postRequest(self, urlSuffix: str) -> any:
-        url = urllib.parse.urljoin(self._baseUrl, urlSuffix)
+    def post_request(self, urlSuffix: str) -> any:
+        url = urllib.parse.urljoin(self._base_url, urlSuffix)
         return self._request(url, method="POST")
 
-    def refreshState(self) -> None:
-        response = self.getRequest("printer/info")
+    def refresh_rate(self) -> None:
+        response = self.get_request("printer/info")
         if "result" in response and "state" in response["result"]:
             self._state = response["result"]["state"]
         else:
             logging.debug(f"Unknown response: {response}")
             self._state = "Unknown"
 
-    def waitForFinalState(self) -> None:
+    def wait_for_final_state(self) -> None:
         while True:
-            self.refreshState()
+            self.refresh_rate()
             logging.info(f"wait for final state. Current state: {self._state}")
             if self._state in (
                 State.PRINTER_READY,
@@ -59,52 +59,54 @@ class PrinterControl:
                 State.PRINTER_ERROR,
             ):
                 break
-            time.sleep(self._retryDelay)
+            time.sleep(self._retry_delay)
 
     @property
-    def isReady(self) -> bool:
+    def is_ready(self) -> bool:
         return self._state == State.PRINTER_READY
 
-    def dontTrustReadyState(self) -> None:
-        timeout = time.time() + self._dontTrustReadyStateTimeout  # 1 minutes from now
+    def dont_trust_ready_state(self) -> None:
+        timeout = (
+            time.time() + self._dont_trust_ready_state_timeout
+        )  # 1 minutes from now
         while True:
             if time.time() >= timeout:
                 break
 
-            self.refreshState()
+            self.refresh_rate()
             if self._state != "ready":
                 break
 
             logging.info("don't trust ready state.")
-            time.sleep(self._retryDelay)
+            time.sleep(self._retry_delay)
 
-    def restartFirmware(self) -> None:
-        response = self.postRequest("printer/firmware_restart")
+    def restart_firmware(self) -> None:
+        response = self.post_request("printer/firmware_restart")
         print(response)
 
     def restart(self) -> None:
-        response = self.postRequest("printer/restart")
+        response = self.post_request("printer/restart")
         print(response)
 
 
-def waitForPrinter(baseUrl: str) -> None:
+def wait_for_printer(baseUrl: str) -> None:
     control = PrinterControl(baseUrl=baseUrl)
 
-    control.dontTrustReadyState()  # when plugging in the usb cable very fast and the state in moonraker is not up to date.
-    control.waitForFinalState()
-    if control.isReady:
+    control.dont_trust_ready_state()  # when plugging in the usb cable very fast and the state in moonraker is not up to date.
+    control.wait_for_final_state()
+    if control.is_ready:
         logging.info("klipper is already started")
         return
 
     control.restart()
-    control.waitForFinalState()
-    if control.isReady:
+    control.wait_for_final_state()
+    if control.is_ready:
         logging.info("klipper is ready after RESTART")
         return
 
-    control.restartFirmware()
-    control.waitForFinalState()
-    if control.isReady:
+    control.restart_firmware()
+    control.wait_for_final_state()
+    if control.is_ready:
         logging.info("klipper is ready after FIRMWARE_RESTART")
         return
 
@@ -118,4 +120,4 @@ if __name__ == "__main__":
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
-    waitForPrinter(baseUrl="http://localhost:7125")
+    wait_for_printer(baseUrl="http://localhost:7125")
