@@ -19,7 +19,7 @@ class State(Enum):
 
 class PrinterControl:
     _retry_delay = 1  # seconds
-    _dont_trust_ready_state_timeout = 30  # seconds
+    _debounce_time = 30  # seconds
     _base_url = None
     _state = State.PRINTER_UNKNOWN
 
@@ -66,9 +66,7 @@ class PrinterControl:
         return self._state == State.PRINTER_READY
 
     def dont_trust_ready_state(self) -> None:
-        timeout = (
-            time.time() + self._dont_trust_ready_state_timeout
-        )  # 1 minutes from now
+        timeout = time.time() + self._debounce_time  # 1 minutes from now
         while True:
             if time.time() >= timeout:
                 break
