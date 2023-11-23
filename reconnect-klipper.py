@@ -44,10 +44,10 @@ class PrinterControl:
         while True:
             self.refreshState()
             logging.info(f"wait for final state. Current state: {self.__state}")
-            if (
-                self.__state == State.PRINTER_READY
-                or self.__state == State.PRINTER_SHUTDOWN
-                or self.__state == State.PRINTER_ERROR
+            if self.__state in (
+                State.PRINTER_READY,
+                State.PRINTER_SHUTDOWN,
+                State.PRINTER_ERROR,
             ):
                 break
             time.sleep(self.__retryDelay)
