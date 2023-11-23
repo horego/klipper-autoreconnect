@@ -23,8 +23,8 @@ class PrinterControl:
     _base_url = None
     _state = State.PRINTER_UNKNOWN
 
-    def __init__(self, baseUrl: str) -> None:
-        self._base_url = baseUrl
+    def __init__(self, base_url: str) -> None:
+        self._base_url = base_url
 
     def _request(self, url, method) -> any:
         req = urllib.request.Request(url, method=method)
@@ -33,12 +33,12 @@ class PrinterControl:
             json_data = json.loads(data.decode("utf-8"))
             return json_data
 
-    def get_request(self, urlSuffix: str) -> any:
-        url = urllib.parse.urljoin(self._base_url, urlSuffix)
+    def get_request(self, url_suffix: str) -> any:
+        url = urllib.parse.urljoin(self._base_url, url_suffix)
         return self._request(url, method="GET")
 
-    def post_request(self, urlSuffix: str) -> any:
-        url = urllib.parse.urljoin(self._base_url, urlSuffix)
+    def post_request(self, url_suffix: str) -> any:
+        url = urllib.parse.urljoin(self._base_url, url_suffix)
         return self._request(url, method="POST")
 
     def refresh_rate(self) -> None:
@@ -87,8 +87,8 @@ class PrinterControl:
         print(response)
 
 
-def wait_for_printer(baseUrl: str) -> None:
-    control = PrinterControl(baseUrl=baseUrl)
+def wait_for_printer(base_url: str) -> None:
+    control = PrinterControl(base_url=base_url)
 
     control.dont_trust_ready_state()  # when plugging in the usb cable very fast and the state in moonraker is not up to date.
     control.wait_for_final_state()
@@ -118,4 +118,4 @@ if __name__ == "__main__":
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
-    wait_for_printer(baseUrl="http://localhost:7125")
+    wait_for_printer(base_url="http://localhost:7125")
