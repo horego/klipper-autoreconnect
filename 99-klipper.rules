@@ -1,0 +1,2 @@
+## rule to restart klipper when the printer is connected via usb
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", ACTION=="add", RUN+="/bin/bash -c '/bin/echo \"/bin/python /home/pi/reconnect-klipper.py\" | at now'"
