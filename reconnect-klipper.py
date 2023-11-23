@@ -4,18 +4,22 @@ import time
 import logging
 import sys
 
+from enum import Enum
 
-class PrinterControl:
+
+class State(Enum):
     PRINTER_READY = "ready"
     PRINTER_STARTUP = "startup"
     PRINTER_SHUTDOWN = "shutdown"
     PRINTER_ERROR = "error"
     PRINTER_UNKNOWN = "unknown"
 
+
+class PrinterControl:
     __retryDelay = 1  # seconds
     __dontTrustReadyStateTimeout = 30  # seconds
     __baseUrl = None
-    __state = PRINTER_UNKNOWN
+    __state = State.PRINTER_UNKNOWN
 
     def __init__(self, baseUrl: str) -> None:
         self.__baseUrl = baseUrl
@@ -41,15 +45,15 @@ class PrinterControl:
             self.refreshState()
             logging.info(f"wait for final state. Current state: {self.__state}")
             if (
-                self.__state == PrinterControl.PRINTER_READY
-                or self.__state == PrinterControl.PRINTER_SHUTDOWN
-                or self.__state == PrinterControl.PRINTER_ERROR
+                self.__state == State.PRINTER_READY
+                or self.__state == State.PRINTER_SHUTDOWN
+                or self.__state == State.PRINTER_ERROR
             ):
                 break
             time.sleep(self.__retryDelay)
 
     def isReady(self) -> bool:
-        return self.__state == PrinterControl.PRINTER_READY
+        return self.__state == State.PRINTER_READY
 
     def dontTrustReadyState(self) -> None:
         timeout = time.time() + self.__dontTrustReadyStateTimeout  # 1 minutes from now
