@@ -1,103 +1,130 @@
-import requests
-import urllib.parse
+#!/usr/bin/env python3
 import json
+import urllib.parse
+import urllib.request
+import urllib.error
 import time
 import logging
 import sys
 
-class PrinterControl:
+from enum import Enum
+
+
+class State(Enum):
     PRINTER_READY = "ready"
     PRINTER_STARTUP = "startup"
     PRINTER_SHUTDOWN = "shutdown"
     PRINTER_ERROR = "error"
     PRINTER_UNKNOWN = "unknown"
 
-    __retryDelay = 1 # seconds
-    __dontTrustReadyStateTimeout = 30 #seconds
-    __baseUrl = None
-    __state = PRINTER_UNKNOWN
 
-    def __init__(self, baseUrl : str) -> None:
-        self.__baseUrl = baseUrl
+class PrinterControl:
+    _retry_delay = 1  # seconds
+    _debounce_time = 30  # seconds
+    _base_url = None
+    _state = State.PRINTER_UNKNOWN
 
-    def getRequest(self, urlSuffix : str) -> any:
-        url = urllib.parse.urljoin(self.__baseUrl,urlSuffix)
-        return requests.get(url=url).json()
+    def __init__(self, base_url: str) -> None:
+        self._base_url = base_url
 
-    def postRequest(self, urlSuffix : str) -> any:
-        url = urllib.parse.urljoin(self.__baseUrl,urlSuffix)
-        return requests.post(url=url).json()
+    def _request(self, url, method) -> any:
+        req = urllib.request.Request(url, method=method)
+        try:
+            with urllib.request.urlopen(req) as response:
+                data = response.read()
+                encoding = response.info().get_content_charset()
+                json_data = json.loads(data.decode(encoding))
+                return json_data
+        except urllib.error.HTTPError as e:
+            error_data = e.read()
+            encoding = e.info().get_content_charset()
+            json_error_data = json.loads(error_data.decode(encoding))
+            return json_error_data
 
-    def refreshState(self) -> None:
-        response = self.getRequest('printer/info')
-        if ('result' in response and 'state' in response['result']):
-            self.__state = response['result']['state']
+    def _get_request(self, url_suffix: str) -> any:
+        url = urllib.parse.urljoin(self._base_url, url_suffix)
+        return self._request(url, method="GET")
+
+    def _post_request(self, url_suffix: str) -> any:
+        url = urllib.parse.urljoin(self._base_url, url_suffix)
+        return self._request(url, method="POST")
+
+    def refresh_state(self) -> None:
+        response = self._get_request("printer/info")
+        if "result" in response and "state" in response["result"]:
+            logging.debug(response["result"]["state"].lower())
+            self._state = State(response["result"]["state"].lower())
         else:
             logging.debug(f"Unknown response: {response}")
-            self.__state = "Unknown"
+            self._state = State.PRINTER_UNKNOWN
 
-    def waitForFinalState(self) -> None:
+    def wait_for_final_state(self) -> None:
         while True:
-            self.refreshState()
-            logging.info(f"wait for final state. Current state: {self.__state}")
-            if (self.__state == PrinterControl.PRINTER_READY or self.__state == PrinterControl.PRINTER_SHUTDOWN or self.__state == PrinterControl.PRINTER_ERROR):
+            self.refresh_state()
+            logging.info(f"wait for final state. Current state: {self._state}")
+            if self._state in (
+                State.PRINTER_READY,
+                State.PRINTER_SHUTDOWN,
+                State.PRINTER_ERROR,
+            ):
                 break
-            time.sleep(self.__retryDelay)
+            time.sleep(self._retry_delay)
 
-    def isReady(self) -> bool:
-        return self.__state == PrinterControl.PRINTER_READY
+    @property
+    def is_ready(self) -> bool:
+        return self._state == State.PRINTER_READY
 
-    def dontTrustReadyState(self) -> None:
-        timeout = time.time() + self.__dontTrustReadyStateTimeout   # 1 minutes from now
+    def dont_trust_ready_state(self) -> None:
+        timeout = time.time() + self._debounce_time  # 1 minutes from now
         while True:
             if time.time() >= timeout:
                 break
 
-            self.refreshState()
-            if (self.__state != 'ready'):
+            self.refresh_state()
+            if self._state != State.PRINTER_READY:
                 break
 
             logging.info("don't trust ready state.")
-            time.sleep(self.__retryDelay)
+            time.sleep(self._retry_delay)
 
-    def restartFirmware(self) -> None:
-        response = self.postRequest('printer/firmware_restart')
+    def restart_firmware(self) -> None:
+        response = self._post_request("printer/firmware_restart")
         print(response)
 
     def restart(self) -> None:
-        response = self.postRequest('printer/restart')
+        response = self._post_request("printer/restart")
         print(response)
 
-def waitForPrinter(baseUrl : str) -> None:
-    control = PrinterControl(baseUrl=baseUrl)
 
-    control.dontTrustReadyState() #when plugging in the usb cable very fast and the state in moonraker is not up to date.
-    control.waitForFinalState()
-    if (control.isReady()):
+def wait_for_printer(base_url: str) -> None:
+    control = PrinterControl(base_url=base_url)
+
+    control.dont_trust_ready_state()  # when plugging in the usb cable very fast and the state in moonraker is not up to date.
+    control.wait_for_final_state()
+    if control.is_ready:
         logging.info("klipper is already started")
         return
-    
+
     control.restart()
-    control.waitForFinalState()
-    if (control.isReady()):
+    control.wait_for_final_state()
+    if control.is_ready:
         logging.info("klipper is ready after RESTART")
         return
 
-    control.restartFirmware()
-    control.waitForFinalState()
-    if (control.isReady()):
+    control.restart_firmware()
+    control.wait_for_final_state()
+    if control.is_ready:
         logging.info("klipper is ready after FIRMWARE_RESTART")
         return
-    
+
     logging.info("failed to restart klipper.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s [%(levelname)s] %(message)s",
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=[logging.StreamHandler(sys.stdout)],
     )
 
-    waitForPrinter(baseUrl="http://localhost:7125")
+    wait_for_printer(base_url="http://localhost:7125")
