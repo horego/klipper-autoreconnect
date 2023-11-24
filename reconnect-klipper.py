@@ -27,19 +27,19 @@ class PrinterControl:
     def __init__(self, base_url: str) -> None:
         self._base_url = base_url
 
-    def _request(self, url, method) -> any:
+    @staticmethod
+    def _request(url, method) -> any:
         req = urllib.request.Request(url, method=method)
         try:
             with urllib.request.urlopen(req) as response:
                 data = response.read()
                 encoding = response.info().get_content_charset()
-                json_data = json.loads(data.decode(encoding))
-                return json_data
         except urllib.error.HTTPError as e:
-            error_data = e.read()
+            data = e.read()
             encoding = e.info().get_content_charset()
-            json_error_data = json.loads(error_data.decode(encoding))
-            return json_error_data
+
+        json_data = json.loads(data.decode(encoding))
+        return json_data
 
     def _get_request(self, url_suffix: str) -> any:
         url = urllib.parse.urljoin(self._base_url, url_suffix)
