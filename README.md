@@ -27,12 +27,16 @@ Copy the files `reconnect-klipper.py` and `99-klipper.rules` to your host system
 
 ### Configuration
 
-Inside `reconnect-klipper.py` there is a line with the moonraker base url `baseUrl="http://localhost:7125"`. Adjust the port if needed.
+Inside `99-klipper.rules` you need to adjust the value of
+* idVendor `1a86`,
+* idProduct `7523`,
+* path of the script `/home/pi/reconnect-klipper.py` and the
+* base url `http://localhost:7125` of moonraker.
 
-Inside `99-klipper.rules` you need to adjust the value of idVendor `1a86`, idProduct `7523` and the path of the script `/home/pi/reconnect-klipper.py`. To determine the idVendor and idProduct you can use `lsusb` command. Lsusb is also described here [Klipper Issue 835](https://github.com/Klipper3d/klipper/issues/835).
+To determine the idVendor and idProduct you can use `lsusb` command. Lsusb is also described here [Klipper Issue 835](https://github.com/Klipper3d/klipper/issues/835).
 
 ```
-SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", ACTION=="add", RUN+="/bin/bash -c '/bin/echo \"/bin/python /home/pi/reconnect-klipper.py\" | at now'"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", ACTION=="add", RUN+="/bin/bash -c '/bin/echo \"/bin/python /home/pi/reconnect-klipper.py http://localhost:7125\" | at now'"
 
 ```
 
