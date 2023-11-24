@@ -2,6 +2,7 @@
 import json
 import urllib.parse
 import urllib.request
+import urllib.error
 import time
 import logging
 import sys
@@ -28,10 +29,17 @@ class PrinterControl:
 
     def _request(self, url, method) -> any:
         req = urllib.request.Request(url, method=method)
-        with urllib.request.urlopen(req) as response:
-            data = response.read()
-            json_data = json.loads(data.decode("utf-8"))
-            return json_data
+        try:
+            with urllib.request.urlopen(req) as response:
+                data = response.read()
+                encoding = response.info().get_content_charset()
+                json_data = json.loads(data.decode(encoding))
+                return json_data
+        except urllib.error.HTTPError as e:
+            error_data = e.read()
+            encoding = e.info().get_content_charset()
+            json_error_data = json.loads(error_data.decode(encoding))
+            return json_error_data
 
     def get_request(self, url_suffix: str) -> any:
         url = urllib.parse.urljoin(self._base_url, url_suffix)
@@ -44,7 +52,8 @@ class PrinterControl:
     def refresh_rate(self) -> None:
         response = self.get_request("printer/info")
         if "result" in response and "state" in response["result"]:
-            self._state = State[response["result"]["state"].lower()]
+            logging.debug(response["result"]["state"].lower())
+            self._state = State(response["result"]["state"].lower())
         else:
             logging.debug(f"Unknown response: {response}")
             self._state = State.PRINTER_UNKNOWN
