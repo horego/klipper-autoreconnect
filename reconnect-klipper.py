@@ -22,9 +22,12 @@ class PrinterControl:
     _retry_delay = 1  # seconds
     _debounce_time = 30  # seconds
     _base_url = None
+    _logger = None
     _state = State.PRINTER_UNKNOWN
 
     def __init__(self, base_url: str) -> None:
+        self._logger = logging.getLogger(f"klipper.{self.__class__.__name__}")
+        self._logger.setLevel(logging.INFO)
         self._base_url = base_url
 
     @staticmethod
@@ -89,11 +92,11 @@ class PrinterControl:
 
     def restart_firmware(self) -> None:
         response = self._post_request("printer/firmware_restart")
-        print(response)
+        self._logger.info(response)
 
     def restart(self) -> None:
         response = self._post_request("printer/restart")
-        print(response)
+        self._logger.info(response)
 
 
 def wait_for_printer(base_url: str) -> None:
@@ -123,7 +126,7 @@ def wait_for_printer(base_url: str) -> None:
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.DEBUG,
-        format="%(asctime)s [%(levelname)s] %(message)s",
+        format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
         handlers=[logging.StreamHandler(sys.stderr)],
     )
 
