@@ -41,16 +41,16 @@ class PrinterControl:
             json_error_data = json.loads(error_data.decode(encoding))
             return json_error_data
 
-    def get_request(self, url_suffix: str) -> any:
+    def _get_request(self, url_suffix: str) -> any:
         url = urllib.parse.urljoin(self._base_url, url_suffix)
         return self._request(url, method="GET")
 
-    def post_request(self, url_suffix: str) -> any:
+    def _post_request(self, url_suffix: str) -> any:
         url = urllib.parse.urljoin(self._base_url, url_suffix)
         return self._request(url, method="POST")
 
-    def refresh_rate(self) -> None:
-        response = self.get_request("printer/info")
+    def refresh_state(self) -> None:
+        response = self._get_request("printer/info")
         if "result" in response and "state" in response["result"]:
             logging.debug(response["result"]["state"].lower())
             self._state = State(response["result"]["state"].lower())
@@ -60,7 +60,7 @@ class PrinterControl:
 
     def wait_for_final_state(self) -> None:
         while True:
-            self.refresh_rate()
+            self.refresh_state()
             logging.info(f"wait for final state. Current state: {self._state}")
             if self._state in (
                 State.PRINTER_READY,
@@ -80,7 +80,7 @@ class PrinterControl:
             if time.time() >= timeout:
                 break
 
-            self.refresh_rate()
+            self.refresh_state()
             if self._state != State.PRINTER_READY:
                 break
 
@@ -88,11 +88,11 @@ class PrinterControl:
             time.sleep(self._retry_delay)
 
     def restart_firmware(self) -> None:
-        response = self.post_request("printer/firmware_restart")
+        response = self._post_request("printer/firmware_restart")
         print(response)
 
     def restart(self) -> None:
-        response = self.post_request("printer/restart")
+        response = self._post_request("printer/restart")
         print(response)
 
 
